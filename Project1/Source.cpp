@@ -4,7 +4,7 @@ void g() {}
 
 
 int main() {
-	int n;
+	int n = 0;
 	n++;
 
 	std::cout << "matan\n";
