@@ -2,6 +2,9 @@
 
 void g() {}
 
+int return_zero() {
+	return 0;
+}
 
 int main() {
 	int n = 0;
