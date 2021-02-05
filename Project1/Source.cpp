@@ -6,6 +6,10 @@ int return_zero() {
 	return 0;
 }
 
+void print_name(std::string name) {
+	std::cout << "Name: " << name << std::endl;
+}
+
 int main() {
 	int n = 0;
 	n++;
