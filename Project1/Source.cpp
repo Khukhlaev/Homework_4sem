@@ -7,7 +7,7 @@ int return_zero() {
 }
 
 void print_name(std::string name) {
-	std::cout << "Name: " << name << std::endl;
+	std::cout << "Your name: " << name << std::endl;
 }
 
 int main() {
