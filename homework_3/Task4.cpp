@@ -4,6 +4,7 @@
 #include <vector>
 #include <set>
 #include <fstream>
+#include <chrono>
 
 
 unsigned int RSHash(const char* str, unsigned int length)
@@ -147,6 +148,22 @@ unsigned int APHash(const char* str, unsigned int length)
     return hash;
 }
 
+std::set <std::string> makeRandomWords (size_t length) {
+    std::uniform_int_distribution letter(97, 122);
+    std::default_random_engine e(static_cast <std::size_t>
+                                 (std::chrono::system_clock::now().time_since_epoch().count()));
+
+    std::set <std::string> words;
+
+    for (std::string str(length, '_'); words.size() < 5000000u; words.insert(str)) {
+        for (auto &c : str)
+            c = letter(e);
+    }
+
+    return words;
+}
+
+
 
 int main () {
     std::vector<std::set<int>> codes (9);
@@ -154,46 +171,37 @@ int main () {
 
     std::ofstream file ("collisions_2.txt");
 
-    std::vector<std::string> letters(26, "a");
-    for (int i = 0; i < 26; i++) {
-        letters[i] = 'a' + i;
-    }
-
-    std::vector<std::string> words;
-    words.reserve(12000000);
-    for (const auto& i : letters) {
-        for (const auto& j : letters) {
-            for (const auto& k : letters) {
-                for (const auto& l : letters) {
-                    for (const auto& m : letters) words.push_back(i + j + k + l + m);
-                }
-            }
-        }
-    }
+    std::set<std::string> words = makeRandomWords(10);
 
     int size = 100000;
-    for (int i = 0; i < 12; ++i) {
-        std::cout << i+1 << "/12\n";
-        for (int j = 0; j < 9; j++) codes[j].clear();
+    for (int i = 0; i < 11; ++i) {
+        std::cout << i+1 << "/11\n";
+        for (auto& code : codes) code.clear();
 
+        auto it = words.begin();
         for (int j = 0; j < size; ++j) {
-            codes[0].insert(RSHash(words[j].c_str(), words[j].length()));
-            codes[1].insert(JSHash(words[j].c_str(), words[j].length()));
-            codes[2].insert(PJWHash(words[j].c_str(), words[j].length()));
-            codes[3].insert(ELFHash(words[j].c_str(), words[j].length()));
-            codes[4].insert(BKDRHash(words[j].c_str(), words[j].length()));
-            codes[5].insert(SDBMHash(words[j].c_str(), words[j].length()));
-            codes[6].insert(DJBHash(words[j].c_str(), words[j].length()));
-            codes[7].insert(DEKHash(words[j].c_str(), words[j].length()));
-            codes[8].insert(APHash(words[j].c_str(), words[j].length()));
+            codes[0].insert(RSHash((*it).c_str(), (*it).length()));
+            codes[1].insert(JSHash((*it).c_str(), (*it).length()));
+            codes[2].insert(PJWHash((*it).c_str(), (*it).length()));
+            codes[3].insert(ELFHash((*it).c_str(), (*it).length()));
+            codes[4].insert(BKDRHash((*it).c_str(), (*it).length()));
+            codes[5].insert(SDBMHash((*it).c_str(), (*it).length()));
+            codes[6].insert(DJBHash((*it).c_str(), (*it).length()));
+            codes[7].insert(DEKHash((*it).c_str(), (*it).length()));
+            codes[8].insert(APHash((*it).c_str(), (*it).length()));
+
+            it++;
         }
 
         for (int k = 0; k < 9; ++k) {
             file << size << " " << titles[k] << ": " << size - codes[k].size() << " ; ";
         }
         file << std::endl;
-        
+
         size += 100000;
-        if (i >= 9) size += 1000000;
     }
+
+    // График в файле graph_task_4
+    // PJW и ELF сверху, совпадают, следующая после них - DEK, остальные близки к друг другу
+    // и с меньшим числом коллизий, чем предыдущие три.
 }
