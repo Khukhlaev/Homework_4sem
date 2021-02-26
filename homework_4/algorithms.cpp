@@ -54,12 +54,12 @@ int main () {
     int sum_p2 = std::accumulate(std::begin(p2), std::end(p2), 0);
 
     // 11.
-    std::fill(std::begin(p2), std::begin(p2) + 3, 1);
+    std::fill_n(std::begin(p2), 3, 1);
 
     // 12.
-    std::vector<int> p3(std::size(p2));
-    std::transform(std::begin(p1), std::end(p1), std::begin(p2), std::begin(p3),
-            [](auto x, auto y){return y - x;});
+    std::vector<int> p3;
+    std::transform(std::begin(p1), std::end(p1), std::begin(p2), std::back_inserter(p3),
+            std::minus<>());
 
     // 13.
     std::replace_if(std::begin(p3), std::end(p3), [](auto x){return x < 0;}, 0);
@@ -72,7 +72,7 @@ int main () {
     std::reverse(std::begin(p3), std::end(p3));
 
     // 16.
-    std::nth_element(std::begin(p3), std::end(p3) - 3,std::end(p3));
+    std::nth_element(std::begin(p3), std::prev(std::end(p3), 3),std::end(p3));
     std::cout << "Top 3 max elements from p3: "
         << p3[std::size(p3) - 1] << " " << p3[std::size(p3) - 2] << " " << p3[std::size(p3) - 3] << std::endl;
 
