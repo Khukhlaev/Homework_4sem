@@ -4,3 +4,4 @@ project(homework_4)
 set(CMAKE_CXX_STANDARD 17)
 
 add_executable(algorithms algorithms.cpp)
+add_executable(additional_task additional_task.cpp)
