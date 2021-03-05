@@ -5,9 +5,8 @@
 
 
 int main() {
-    std::regex pattern(R"(([\n[:space:]]+\w+[-\w\.]*)@(\w+[\.\w]*)\.([[:alpha:]]{2,6}))");
+    std::regex pattern(R"(\s(\w+\.?)+@(\w+\.)+([[:alpha:]]{2,6}))");
     std::smatch matches;
-
     std::ifstream input("text_task3.txt");
 
     std::string buffer;
@@ -20,12 +19,12 @@ int main() {
     }
 
     // Результат:
-//    yandex
-//    phystech
-//    cia
-//    vor
-//    ru_gov
-//    gmail
+//    yandex.
+//    phystech.
+//    cia.
+//    vor.
+//    gmail.
+
 
     return 0;
 }
