@@ -1,0 +1,7 @@
+{
+    "age": 66,
+    "height": 165.0,
+    "name": "Angela",
+    "nationality": "German",
+    "surname": "Merkel"
+}

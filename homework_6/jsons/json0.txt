@@ -1,0 +1,7 @@
+{
+    "age": 44,
+    "height": 188.0,
+    "name": "Alexey",
+    "nationality": "Russian",
+    "surname": "Navalny"
+}

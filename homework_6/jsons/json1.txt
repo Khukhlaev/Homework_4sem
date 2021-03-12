@@ -1,0 +1,7 @@
+{
+    "age": 40,
+    "height": 185.0,
+    "name": "Leonid",
+    "nationality": "Russian",
+    "surname": "Volkov"
+}
