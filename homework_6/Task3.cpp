@@ -5,7 +5,16 @@
 #include <chrono>
 #include <ctime>
 
-using namespace std::chrono_literals;
+template <typename TP>
+std::time_t to_time_t(TP tp)
+{
+    using namespace std::chrono;
+    auto sctp = time_point_cast<system_clock::duration>(tp - TP::clock::now()
+                                                        + system_clock::now());
+    return system_clock::to_time_t(sctp);
+}
+
+
 auto compute_file_size(const std::filesystem::path & path)
 {
     if (std::filesystem::exists(path) && std::filesystem::is_regular_file(path))
@@ -49,21 +58,21 @@ auto compute_directory_size(const std::filesystem::path & path)
 
 void view_directory(const std::filesystem::path & path)
 {
+
+    std::cout << std::left << std::setw(30) << "File (or folder) name"
+        << std::left << std::setw(30) << "Size in bytes" << std::left << std::setw(30) << "Date modified" << std::endl;
     if (std::filesystem::exists(path) && std::filesystem::is_directory(path))
     {
         for (const auto & entry : std::filesystem::directory_iterator(path))
         {
-            std::cout << entry.path().filename() << " " << compute_directory_size(entry);
+            std::cout << std::left << std::setw(30) << entry.path().filename()
+                << std::left << std::setw(30) << compute_directory_size(entry);
 
             if (std::filesystem::is_regular_file(entry.status())) {
-
                 auto ftime = std::filesystem::last_write_time(entry);
-                std::cout << " " << ftime.time_since_epoch().count();
-            //    auto time = ftime.time_since_epoch();
-             //   std::time_t t = (time_t)time.count();
-           //     std::cout << std::asctime(std::localtime(&t));
-            }
-            std::cout << std::endl;
+                time_t t = to_time_t(ftime);
+                std::cout << std::asctime(std::localtime(&t));
+            } else std::cout << std::endl;
         }
     }
 }
