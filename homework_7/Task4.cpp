@@ -5,34 +5,10 @@
 #include <numeric>
 #include <execution>
 
-template < typename Iterator, typename Function >
-void parallel_for_each(Iterator first, Iterator last, Function func)
-{
-    const std::size_t length = std::distance(first, last);
-
-    const std::size_t max_size = 10000000;
-
-    if (length <= max_size) {
-        std::for_each(first, last, func);
-    }
-    else {
-        Iterator middle = first;
-        std::advance(middle, length / 2);
-
-        std::future < void > first_half_result =
-                std::async(parallel_for_each< Iterator, Function >, first, middle, func);
-
-        parallel_for_each(middle, last, func);
-
-        first_half_result.get();
-
-    }
-}
-
 
 void test_for_each (Timer& t) {
     t.reset_timer();
-    const int vec_size = 100000000;
+    const int vec_size = 1000000;
     std::vector<int> vec(vec_size);
 
     std::iota(vec.begin(), vec.end(), 1);
@@ -45,42 +21,50 @@ void test_for_each (Timer& t) {
 
     t.reset_timer();
     t.start_timer();
-    parallel_for_each(vec.begin(), vec.end(), [](auto& x){x += 1;});
+    std::for_each(std::execution::par, vec.begin(), vec.end(), [](auto& x){x += 1;});
     t.print_time(std::cout);
 
-    // На таких данных наша версия for_each быстрее обычной:
-    // for_each: 52 ms; parallel_for_each: 36 ms
-    // Быстрота нашей реализации очевидно сильно зависит от константы max_size, если ее подобрать так,
-    // чтобы использовалось не очень много потоков, то наша реализация будет быстрее
+    // На таких данных параллельный for_each быстрее обычного:
+    // обычный: 53 ms; параллельный: 37 ms
+    // При других размерах результаты абсолютно аналогичны другим алгоритмам: параллельная версия в целом быстрее,
+    // но при уменьшении размера начинают работать примерно одинаково
 }
 
 
 void test_partial_sums(Timer& t) {
     t.reset_timer();
-    std::vector<int> res;
 
-    const int vec_size = 100000000;
-    std::vector<int> vec(vec_size);
+    const int vec_size = 20000000;
+    std::vector<double> vec(vec_size, 1.0);
+    std::vector<double> res(vec_size);
 
-    std::iota(vec.begin(), vec.end(), 1);
+    auto bin_op = [](const auto lhs, const auto rhs) {
+        double result = 0;
+
+        for (int i = 0; i < 10; ++i) {
+            result = std::sin(result + lhs + rhs);
+        }
+        return result;
+    };
 
     t.start_timer();
-    std::partial_sum(vec.begin(), vec.end(), std::back_inserter(res));
+    std::partial_sum(vec.begin(), vec.end(), res.begin(), bin_op);
     t.print_time(std::cout);
 
     std::cout << std::endl;
 
     res.clear();
+    res.resize(vec_size);
+
     t.reset_timer();
     t.start_timer();
-    std::inclusive_scan(std::execution::par, vec.begin(), vec.end(), res.begin());
+    std::inclusive_scan(std::execution::par, vec.begin(), vec.end(), res.begin(), bin_op);
     t.print_time(std::cout);
 
 
-    // На таких данных inclusive_scan быстрее, чем partial_sum:
-    // partial_sum: 616 ms, inclusive_scan: 219 ms
-    // Проверил при различных размерах исходного вектора, inclusive_scan в целом быстрее,
-    // но при уменьшении размера начинают работать примерно одинаково
+    // На таких данных inclusive_scan сильно быстрее, чем partial_sum:
+    // partial_sum: 5067 ms, inclusive_scan: 1501 ms
+    // На простых же операциях partial_sum быстрее
 
 }
 
@@ -115,7 +99,7 @@ int main() {
     Timer t;
 
     //test_for_each(t);
-    //test_partial_sums(t);
-    test_transform(t);
+    test_partial_sums(t);
+    //test_transform(t);
 
 }
