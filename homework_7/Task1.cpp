@@ -4,6 +4,7 @@
 #include <random>
 #include <chrono>
 #include <cmath>
+#include "Timer.h"
 
 class Threads_Guard
 {
@@ -40,48 +41,37 @@ private:
     std::vector < std::thread > & m_threads;
 };
 
-
-
-struct Point {
-    double x;
-    double y;
-
-    Point (double x, double y) {
-        this->x = x;
-        this->y = y;
-    }
-
-    double distance_to_zero() const {
-        return sqrt(x * x + y * y);
-    }
-};
-
-Point generate_point(std::mt19937_64& mersenne, std::uniform_real_distribution<double>& real_dist) {
-    return Point(real_dist(mersenne), real_dist(mersenne));
-}
-
 double counting_pi (int number_points = 1000000) {
 
     std::mt19937_64 mersenne (std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_real_distribution<double> real_dist(-0.5, 0.5);
 
-    double number_points_in_circle = 0;
+    int number_points_in_circle = 0;
 
+    double x, y;
     for (int i = 0; i < number_points; ++i) {
-       if (generate_point(mersenne, real_dist).distance_to_zero() < 0.5) number_points_in_circle++;
+        x = real_dist(mersenne);
+        y = real_dist(mersenne);
+       if (x * x + y * y < 0.25) number_points_in_circle++;
     }
 
-    return 4 * number_points_in_circle / number_points;
+    return 4.0 * number_points_in_circle / number_points;
 }
 
 
 // service function for parallel_counting_pi
-double count_points(std::mt19937_64& mersenne, std::uniform_real_distribution<double>& real_dist, int number_points) {
+int count_points(int number_points) {
 
-    double number_points_in_circle = 0;
+    std::mt19937_64 mersenne (std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_real_distribution<double> real_dist(-0.5, 0.5);
+
+    int number_points_in_circle = 0;
+    double x, y;
 
     for (int i = 0; i < number_points; ++i) {
-        if (generate_point(mersenne, real_dist).distance_to_zero() < 0.5) number_points_in_circle++;
+        x = real_dist(mersenne);
+        y = real_dist(mersenne);
+        if (x * x + y * y < 0.25) number_points_in_circle++;
     }
 
     return number_points_in_circle;
@@ -100,28 +90,24 @@ double parallel_counting_pi (int number_points = 8000000) {
 
     const int block_size = number_points / num_threads;
 
-    std::vector < std::future < double > > futures(num_threads - 1);
+    std::vector < std::future < int > > futures(num_threads - 1);
     std::vector < std::thread >		  threads(num_threads - 1);
 
     Threads_Guard guard(threads);
 
-    std::mt19937_64 mersenne (std::chrono::system_clock::now().time_since_epoch().count());
-    std::uniform_real_distribution<double> real_dist(-0.5, 0.5);
-
     for (std::size_t i = 0; i < (num_threads - 1); ++i)
     {
 
-        std::packaged_task < double(std::mt19937_64&, std::uniform_real_distribution<double>&, int) > task{
-            count_points };
+        std::packaged_task < int(int) > task{ count_points };
 
         futures[i] = task.get_future();
-        threads[i] = std::thread(std::move(task), std::ref(mersenne), std::ref(real_dist), block_size);
+        threads[i] = std::thread(std::move(task), block_size);
 
     }
 
-    double last_result = count_points(mersenne, real_dist, block_size);
+    int last_result = count_points(block_size);
 
-    double result = 0;
+    int result = 0;
 
     for (std::size_t i = 0; i < (num_threads - 1); ++i)
     {
@@ -130,16 +116,26 @@ double parallel_counting_pi (int number_points = 8000000) {
 
     result += last_result;
 
-    return 4 * result / number_points;
+    return 4.0 * result / number_points;
 
 }
 
 int main () {
-    std::cout << counting_pi() << std::endl << parallel_counting_pi();
+    Timer t;
+
+    t.start_timer();
+    std::cout << counting_pi() << " ";
+    t.print_time(std::cout);
+    std::cout << std::endl;
+
+    t.reset_timer();
+    t.start_timer();
+    std::cout << parallel_counting_pi() << " ";
+    t.print_time(std::cout);
 
     // Результат:
-    // 3.14465
-    // 3.14116
+//    3.13846 365
+//    3.14095 403 - паралелльной способ, хотя в нем в 8 раз больше точек и выше соответсвенно выше точность
 
     return 0;
 }
