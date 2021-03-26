@@ -138,25 +138,13 @@ std::set<std::size_t> parallel_find(std::string data, std::string pattern) {
 
 std::string generateDNA(std::size_t length) {
     std::string result;
+    std::vector<std::string> letters = {"A", "G", "T", "C"};
 
     std::mt19937_64 mersenne (std::chrono::system_clock::now().time_since_epoch().count());
-    std::uniform_int_distribution<int> int_distribution (1, 4);
+    std::uniform_int_distribution<int> int_distribution (0, 3);
 
     for (std::size_t i = 0; i < length; i++) {
-        switch (int_distribution(mersenne)) {
-            case 1:
-                result += "A";
-                break;
-            case 2:
-                result += "G";
-                break;
-            case 3:
-                result += "T";
-                break;
-            case 4:
-                result += "C";
-                break;
-        }
+        result += letters[int_distribution(mersenne)];
     }
 
     return result;
