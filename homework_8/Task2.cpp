@@ -48,50 +48,22 @@ private:
 
 struct Searcher
 {
-    void operator()(std::size_t start_index, std::string data, std::string pattern,
-                    std::set< std::size_t > & result, std::mutex& mutex) noexcept {
-        try {
+    void operator()(std::size_t start_index, std::size_t last_index, const std::string& data,
+            const std::string& pattern, std::set< std::size_t > & result, std::mutex& mutex) noexcept {
 
-            std::size_t candidate_find = 0;
-            bool find = false;
 
-            for (std::size_t i = 0; i < data.length(); i++) {
-                find = false;
+        for (std::size_t index = data.find(pattern, start_index);
+            start_index <= last_index && index != std::string::npos;
+                start_index = index + pattern.length(), index = data.find(pattern, start_index)) {
 
-                if (data[i] == pattern[0]) {
-                    candidate_find = i;
-
-                    find = true;
-                    for(; i < data.length() && i - candidate_find < pattern.length(); i++) {
-
-                        if (data[i] != pattern[i - candidate_find]) {
-                            find = false;
-                            break;
-                        }
-
-                        if (i == data.length() - 1 && i - candidate_find + 1 < pattern.length()) {
-                            find = false;
-                            break;
-                        }
-                    }
-
-                }
-
-                if (find) {
-
-                    std::lock_guard lock(mutex);
-                    result.insert(start_index + candidate_find);
-
-                }
-            }
-        }
-        catch (...) {
+            std::lock_guard lock(mutex);
+            result.insert(index);
 
         }
     }
 };
 
-std::set<std::size_t> parallel_find(std::string data, std::string pattern) {
+std::set<std::size_t> parallel_find(const std::string& data, const std::string& pattern) {
 
     std::set<std::size_t> result;
 
@@ -117,20 +89,21 @@ std::set<std::size_t> parallel_find(std::string data, std::string pattern) {
     {
         Threads_Guard guard(threads);
 
-        size_t block_start = 0;
+        std::size_t block_start = 0;
 
         for (std::size_t i = 0; i < (num_threads - 1); ++i) {
 
+            std::size_t block_end = block_start + block_size + pattern.length() - 1;
 
-            threads[i] = std::thread(Searcher (), block_start,
-                                     data.substr(block_start,block_size + pattern.length() - 1),
-                                     pattern, std::ref(result), std::ref(mutex));
+            threads[i] = std::thread(Searcher (), block_start, block_end, std::ref(data), std::ref(pattern),
+                                     std::ref(result), std::ref(mutex));
 
             block_start += block_size;
         }
 
-        Searcher()(block_start, data.substr(block_start, data.size() - block_start), pattern,
+        Searcher()(block_start, data.length() - 1, std::ref(data), std::ref(pattern),
                 std::ref(result), std::ref(mutex));
+
     }
 
     return result;
