@@ -73,8 +73,8 @@ void popStack(Stack& stack, int number_to_pop, std::atomic<bool>& flag) {
 
 void testStack() {
 
-    const int number_threads = 4;
-    const int number_tasks = 1000000;
+    const int number_threads = 1000;
+    const int number_tasks = 100;
 
     Threadsafe_Stack<int> stack_1;
     boost::lockfree::stack<int> stack_2(2 * number_tasks * number_threads);
@@ -185,8 +185,8 @@ void popOurQueue(Threadsafe_Queue<int>& queue, int number_to_pop, std::atomic<bo
 
 
 void testQueue() {
-    const int number_threads = 8;
-    const int number_tasks = 1000000;
+    const int number_threads = 2000;
+    const int number_tasks = 50;
 
     Threadsafe_Queue<int> queue_1;
     boost::lockfree::queue<int> queue_2(2 * number_tasks * number_threads);
@@ -260,6 +260,10 @@ int main() {
     // Однако при большом количестве потоков и малом количестве задач можно найти момент, когда быстрее версия из boost
     // (16 потоков и 10000 задач), но отличие небольшое (несколько милисекунд на масштабе десятков милисекунд)
     // и можно сказать, что на таком масштабе они работают примерно одинаково (может быть как один быстрее, так и другой)
+    // При большом колисестве потоков и малом количестве задач сильно быстрее версия из boost
+    // Пример: при 1000 потоков и 100 задачах:
+    // Threadsafe_Stack - 245 ms
+    // boost version - 122 ms
 
 
 
@@ -273,6 +277,10 @@ int main() {
     // Пример: при 8 потоках и 100000 задач:
     // Threadsafe_queue - 175 ms
     // boost version - 132 ms
+    // Аналогично stack при большом колисестве потоков и малом количестве задач сильно быстрее версия из boost
+    // Пример: при 2000 потоков и 50 задачах:
+    // Threadsafe_Stack - 882 ms
+    // boost version - 389 ms
 
 
     return 0;
