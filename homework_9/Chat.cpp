@@ -2,6 +2,7 @@
 #include <string>
 #include <mutex>
 #include <thread>
+#include <atomic>
 
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/containers/string.hpp>
@@ -25,15 +26,18 @@ using vector_t = boost::interprocess::vector< string_t, allocator_vec>;
 
 
 
-[[noreturn]] void write_messages (string_t& buffer,
+void write_messages (string_t& buffer,
                      vector_t* messages, boost::interprocess::interprocess_mutex* mutex,
-                     boost::interprocess::interprocess_condition* condition_var, bool& written_message) {
+                     boost::interprocess::interprocess_condition* condition_var, bool& written_message,
+                     bool& end) {
 
     std::string buf;
 
     while (true) {
 
         std::getline(std::cin, buf);
+
+        if (buf == "exit") break;
 
         buffer = buf;
 
@@ -45,10 +49,15 @@ using vector_t = boost::interprocess::vector< string_t, allocator_vec>;
         condition_var->notify_all();
     }
 
+    end = true;
+
+    condition_var->notify_all();
+
 }
 
-[[noreturn]] void read_messages (vector_t* messages, boost::interprocess::interprocess_mutex* mutex,
-                    boost::interprocess::interprocess_condition* condition_var, bool& written_message) {
+void read_messages (vector_t* messages, boost::interprocess::interprocess_mutex* mutex,
+                    boost::interprocess::interprocess_condition* condition_var, bool& written_message,
+                    bool& end) {
 
     //All messages up to date
     std::size_t prev_messages_size = 0;
@@ -68,8 +77,10 @@ using vector_t = boost::interprocess::vector< string_t, allocator_vec>;
 
         std::unique_lock lock(*mutex);
 
-        condition_var->wait(lock, [messages, prev_messages_size]()
-            { return messages->size() != prev_messages_size; });
+        condition_var->wait(lock, [messages, prev_messages_size, &end]()
+            { return messages->size() != prev_messages_size || end; });
+
+        if (end) break;
 
         prev_messages_size = messages->size();
 
@@ -80,15 +91,11 @@ using vector_t = boost::interprocess::vector< string_t, allocator_vec>;
 
     }
 
-
-
 }
 
 int main () {
 
     const std::string name = "shared memory";
-
-    //boost::interprocess::shared_memory_object::remove(name.c_str());
 
     system("pause");
 
@@ -101,14 +108,23 @@ int main () {
 
     auto condition_var = sm.find_or_construct<boost::interprocess::interprocess_condition>("condition_var")();
 
+    auto counter_processes = sm.find_or_construct<std::atomic<int>>("counter")();
+    counter_processes->store(*counter_processes + 1);
+
     bool written_message = false; // True if there is a message written by this user
 
-    std::thread thread(read_messages, messages, mutex, condition_var, std::ref(written_message));
-
-    thread.detach();
+    bool end = false; // True if user write end and we want to close program
 
     string_t buffer(sm.get_segment_manager());
 
-    write_messages(buffer, messages, mutex, condition_var, written_message);
+    std::thread thread(write_messages, std::ref(buffer),
+                       messages, mutex, condition_var, std::ref(written_message), std::ref(end));
+
+    thread.detach();
+
+    read_messages(messages, mutex, condition_var, written_message, end);
+
+    if (counter_processes->load() != 1) counter_processes->store(*counter_processes - 1);
+    else boost::interprocess::shared_memory_object::remove(name.c_str());
 
 }
