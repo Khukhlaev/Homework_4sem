@@ -4,121 +4,142 @@
 #include <boost/asio.hpp>
 
 
-void write_messages (boost::asio::ip::tcp::socket & socket, const std::string& nick, bool & end) {
+class Server {
 
-    std::string buf;
-    std::string message;
+public:
 
-    while (true) {
+    Server(std::size_t max_queue_size, int port) {
 
-        std::getline(std::cin, buf);
+        receiveNickname();
 
-        if (end) break;
+        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address_v4::any(), port);
 
-        if (buf.empty()) continue;
+        try {
 
-        if (buf == "exit") {
-            message = buf + '\n';
+            boost::asio::ip::tcp::acceptor acceptor(io_service, endpoint.protocol());
+
+            acceptor.bind(endpoint);
+
+            acceptor.listen(max_queue_size);
+
+            acceptor.accept(socket);
+
+            std::cout << "Connection set, you can start chatting!" << std::endl << std::endl;
+
+            end = false;
+
+            thread = std::thread(&Server::writeMessages, this);
+
+            readMessages();
+
+            thread.join();
+
+            system("pause");
+        }
+        catch (boost::system::system_error & e) {
+            std::cout << "Error occured! Error code = " << e.code() << ". Message: " << e.what() << std::endl;
+
+            system("pause");
+
+
+        }
+    }
+
+    ~Server() = default;
+
+private:
+
+    boost::asio::io_service io_service;
+    std::string nickname;
+    boost::asio::ip::tcp::socket socket = boost::asio::ip::tcp::socket(io_service);
+    boost::asio::streambuf buffer;
+    std::thread thread;
+    bool end;
+
+
+    void receiveNickname() {
+        std::cout << "Enter your nickname:\n";
+        std::cin >> nickname;
+    }
+
+
+    void writeMessages () {
+
+        std::string buf;
+        std::string message;
+
+        while (true) {
+
+            std::getline(std::cin, buf);
+
+            if (end) break;
+
+            if (buf.empty()) continue;
+
+            if (buf == "exit") {
+                message = buf + '\n';
+
+                boost::asio::write(socket, boost::asio::buffer(message));
+
+                break;
+            }
+
+            message = "[" + nickname + "]: " + buf + '\n';
 
             boost::asio::write(socket, boost::asio::buffer(message));
 
-            break;
         }
 
-        message = "[" + nick + "]: " + buf + '\n';
-
-        boost::asio::write(socket, boost::asio::buffer(message));
+        end = true;
 
     }
 
-    end = true;
+    void readMessages () {
 
-}
+        // Printing new messages
+        while (true) {
 
-void read_messages (boost::asio::ip::tcp::socket & socket, bool & end) {
+            boost::asio::read_until(socket, buffer, '\n');
 
-    // Printing new messages
-    while (true) {
+            std::string message;
 
-        boost::asio::streambuf buffer;
+            std::istream input_stream(&buffer);
+            std::getline(input_stream, message, '\n');
 
-        boost::asio::read_until(socket, buffer, '\n');
+            if (message == "exit") {
+                if (!end) {
 
-        std::string message;
+                    end = true;
 
-        std::istream input_stream(&buffer);
-        std::getline(input_stream, message, '\n');
+                    message = "exit\n";
+                    boost::asio::write(socket, boost::asio::buffer(message));
 
-        if (message == "exit") {
-            if (!end) {
+                    std::cout << std::endl << "Your interlocutor close his program, press enter to continue...\n";
+                }
 
-                end = true;
-
-                message = "exit\n";
-                boost::asio::write(socket, boost::asio::buffer(message));
-
-                std::cout << std::endl << "Your interlocutor close his program, exiting...\n";
+                break;
             }
 
-            break;
+
+            std::cout << message << "\n";
+
         }
-
-
-        std::cout << message << "\n";
 
     }
 
-}
+};
+
 
 int main() {
 
     system("chcp 1251");
 
-    std::string nick;
-
-    std::cout << "Enter your nickname:\n";
-    std::cin >> nick;
 
     const std::size_t size = 30;
 
-    auto port = 3333;
+    int port = 3333;
 
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address_v4::any(), port);
-
-    boost::asio::io_service io_service;
-
-    try {
-
-        boost::asio::ip::tcp::acceptor acceptor(io_service, endpoint.protocol());
-
-        acceptor.bind(endpoint);
-
-        acceptor.listen(size);
-
-        boost::asio::ip::tcp::socket socket(io_service);
-
-        acceptor.accept(socket);
-
-        std::cout << "Connection set, you can start chatting!" << std::endl << std::endl;
-
-        bool end = false;
-
-        std::thread thread(write_messages, std::ref(socket), std::cref(nick), std::ref(end));
-
-        thread.detach();
-
-        read_messages(socket, end);
-
-        system("pause");
-    }
-    catch (boost::system::system_error & e) {
-        std::cout << "Error occured! Error code = " << e.code() << ". Message: " << e.what() << std::endl;
-
-        system("pause");
-
-        return e.code().value();
-    }
-
+    Server server(size, port);
 
 
     return EXIT_SUCCESS;
