@@ -7,14 +7,9 @@ set(SFML_ROOT ${SFML_DIR})
 
 find_package(SFML 2.5.1 COMPONENTS graphics REQUIRED)
 
-add_executable(asteroids asteroids.cpp)
-
-target_link_libraries(asteroids sfml-graphics)
-
-add_executable(problems problems.cpp)
-
-target_link_libraries(problems sfml-graphics)
-
 add_executable(good_asteroids good_asteroids.cpp)
 
 target_link_libraries(good_asteroids sfml-graphics)
+add_executable(one_file one_file.cpp)
+
+target_link_libraries(one_file sfml-graphics)

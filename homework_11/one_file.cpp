@@ -14,8 +14,8 @@ class Animation {
 public:
     Animation() = default;
 
-    Animation(sf::Texture& t, int x, int y, int width, int height, int count, float Speed) : m_frame{0},
-                                                                                             m_speed {Speed}{
+    Animation(sf::Texture& t, int x, int y, int width, int height, int count, float speed) : m_frame{0},
+                                                                                             m_speed {speed}{
 
         for (int i = 0; i < count; i++)
             m_frames.emplace_back(x + i * width, y, width, height);
@@ -52,22 +52,19 @@ public:
 public:
 
     bool isEnd() const {
-        return m_frame + m_speed >= m_frames.size();
+        return m_frame + m_speed >= static_cast<float>(m_frames.size());
     }
 
 private:
-    float m_frame{}, m_speed{};
+    float m_frame{};
+    float m_speed{};
+
     std::vector<sf::IntRect> m_frames;
     sf::Sprite m_sprite;
 
 };
 
-enum class Entities_types {
-    asteroid,
-    bullet,
-    player,
-    explosion
-};
+
 
 class Entity {
 
@@ -76,9 +73,8 @@ public:
     Entity(Animation& animation, float x, float y, const unsigned int window_width, const unsigned int window_height,
            float angle = 0.0f, float radius = 1.0f):
             m_life{true}, m_animation{animation}, m_x{x}, m_y{y}, m_angle{angle}, m_radius{radius},
-            m_dx{0.0f}, m_dy{0.0f}, m_type{Entities_types::explosion},
-            m_window_width {static_cast<float>(window_width)}, m_window_height{static_cast<float>(window_height)},
-            deg_to_rad{0.017453f}
+            m_dx{0.0f}, m_dy{0.0f},
+            m_window_width {static_cast<float>(window_width)}, m_window_height{static_cast<float>(window_height)}
     {}
 
 
@@ -109,7 +105,7 @@ public:
     }
 
     float getY() const {
-        return m_y;
+          return m_y;
     }
 
     float getAngle() const {
@@ -129,9 +125,8 @@ protected:
     Animation m_animation;
     float m_x, m_y, m_dx, m_dy, m_angle, m_radius;
     bool m_life;
-    Entities_types m_type;
 
-    const float deg_to_rad;
+    const float deg_to_rad = 0.017453f;
 
     const float m_window_width, m_window_height;
 
@@ -152,8 +147,6 @@ public:
 
         m_dx = urd(mersenne);
         m_dy = urd(mersenne);
-
-        m_type = Entities_types::asteroid;
 
     }
 
@@ -179,10 +172,7 @@ public:
     Bullet(Animation& animation, float x, float y, const unsigned int window_width, const unsigned int window_height,
            float angle = 0.0f, float radius = 1.0f) :
 
-            Entity(animation, x, y, window_width, window_height, angle, radius) {
-
-        m_type = Entities_types::bullet;
-    }
+            Entity(animation, x, y, window_width, window_height, angle, radius) {}
 
     void update() override {
 
@@ -205,10 +195,7 @@ public:
     Player(Animation& animation, float x, float y, const unsigned int window_width, const unsigned int window_height,
            float angle = 0.0f, float radius = 1.0f) :
 
-            Entity(animation, x, y, window_width, window_height, angle, radius), m_thrust{false} {
-
-        m_type = Entities_types::player;
-    }
+            Entity(animation, x, y, window_width, window_height, angle, radius), m_thrust{false} {}
 
 public:
 
@@ -267,6 +254,7 @@ private:
     const float max_speed = 15.0f;
 
 };
+
 
 class Game {
 
@@ -335,14 +323,16 @@ public:
 
     void run() {
 
+        std::mt19937 mersenne (std::chrono::system_clock::now().time_since_epoch().count());
+        std::uniform_real_distribution <float> urd_height(0, m_window_height);
+        std::uniform_real_distribution <float> urd_angle(0, 360);
+
+        std::bernoulli_distribution bool_distrib (probability_for_new_asteroids);
+
         // Main loop
         while (m_window.isOpen() && isPlayerAlive()) {
 
             processingEvents();
-
-            std::mt19937 mersenne (std::chrono::system_clock::now().time_since_epoch().count());
-            std::uniform_real_distribution <float> urd_height(0, m_window_height);
-            std::uniform_real_distribution <float> urd_angle(0, 360);
 
             for (const auto& asteroid : m_asteroids) {
 
@@ -392,7 +382,6 @@ public:
             }
 
 
-            std::bernoulli_distribution bool_distrib (probability_for_new_asteroids);
 
             if (bool_distrib(mersenne)) {
                 makeAsteroid(0, urd_height(mersenne), urd_angle(mersenne));
@@ -480,14 +469,14 @@ private:
     void makeAsteroid(float x, float y, float angle) {
 
         m_asteroids.push_back(std::make_shared<Asteroid>(m_anim_rock, x, y,
-                                                         m_window_width, m_window_width, angle, asteroid_radius));
+                                                         m_window_width, m_window_height, angle, asteroid_radius));
 
     }
 
     void makeSmallAsteroid(float x, float y, float angle) {
 
-        m_asteroids.push_back(std::make_shared<Asteroid>(m_anim_small_rock, x, y,
-                                                         m_window_width, m_window_width, angle, small_asteroid_radius));
+        m_asteroids.push_back(std::make_shared<Asteroid>(m_anim_small_rock, x, y, m_window_width,
+                                                         m_window_height, angle, small_asteroid_radius));
 
     }
 
@@ -522,11 +511,13 @@ private:
 
     template<typename EntityPointer1, typename EntityPointer2>
     bool isCollide(EntityPointer1 a, EntityPointer2 b) {
+        float x = b->getX() - a->getX();
+        float y = b->getY() - a->getY();
+        float r = a->getRadius() + b->getRadius();
 
-        return (b->getX() - a->getX()) * (b->getX() - a->getX()) +
-               (b->getY() - a->getY()) * (b->getY() - a->getY()) <
-               (a->getRadius() + b->getRadius()) * (a->getRadius() + b->getRadius());
+        return x * x + y * y <= r * r;
     }
+
 
 
     template<typename VectorPointers>
@@ -547,15 +538,15 @@ private:
 
     void update() {
 
+        erase_vector(m_asteroids);
+        erase_vector(m_bullets);
+        erase_vector(m_explosions);
+
         update_vector(m_asteroids);
         update_vector(m_bullets);
         update_vector(m_explosions);
 
         m_player->update();
-
-        erase_vector(m_asteroids);
-        erase_vector(m_bullets);
-        erase_vector(m_explosions);
 
 
         m_text.setString("Score: " + std::to_string(m_player_score) +
