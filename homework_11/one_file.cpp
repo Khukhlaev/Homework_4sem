@@ -105,7 +105,7 @@ public:
     }
 
     float getY() const {
-          return m_y;
+        return m_y;
     }
 
     float getAngle() const {
@@ -334,32 +334,36 @@ public:
 
             processingEvents();
 
-            for (const auto& asteroid : m_asteroids) {
+            auto size_asteroids = m_asteroids.size();
+
+            for (auto i = 0; i < size_asteroids; i++) {
 
                 for (const auto& bullet : m_bullets) {
 
-                    if (isCollide(asteroid, bullet)) {
+                    if (isCollide(m_asteroids[i], bullet)) {
 
-                        asteroid->kill();
+                        m_asteroids[i]->kill();
                         bullet->kill();
 
-                        makeRockExplosion(asteroid->getX(), asteroid->getY());
+                        makeRockExplosion(m_asteroids[i]->getX(), m_asteroids[i]->getY());
 
                         m_player_score++;
 
-                        if (asteroid->getRadius() == asteroid_radius) {
+                        if (m_asteroids[i]->getRadius() == asteroid_radius) {
                             // Spawn 2 small asteroids instead of a big one
-                            makeSmallAsteroid(asteroid->getX(), asteroid->getY(), urd_angle(mersenne));
-                            makeSmallAsteroid(asteroid->getX(), asteroid->getY(), urd_angle(mersenne));
+                            makeSmallAsteroid(m_asteroids[i]->getX(), m_asteroids[i]->getY(),
+                                              urd_angle(mersenne));
+                            makeSmallAsteroid(m_asteroids[i]->getX(), m_asteroids[i]->getY(),
+                                              urd_angle(mersenne));
                         }
 
                     }
 
                 }
 
-                if (isCollide(m_player, asteroid)) {
+                if (isCollide(m_player, m_asteroids[i])) {
 
-                    asteroid->kill();
+                    m_asteroids[i]->kill();
 
                     makeShipExplosion(m_player->getX(), m_player->getY());
 
