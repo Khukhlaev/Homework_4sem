@@ -83,7 +83,7 @@ public:
 
                 for (const auto& bullet : m_bullets) {
 
-                    if (isCollide(asteroid, bullet)) {
+                    if (isCollideBullet(asteroid, bullet)) {
 
                         asteroid->kill();
                         bullet->kill();
@@ -255,12 +255,22 @@ private:
 
 private:
 
+    static bool isCollideBullet(const std::shared_ptr<Asteroid>& a, const std::shared_ptr<Bullet>& b) {
+        float x = b->getX() - a->getX();
+        float y = b->getY() - a->getY();
+        float r = a->getRadius() + b->getRadius();
+
+        return x * x + y * y <= r * r;
+    }
+
+
     template<typename EntityPointer1, typename EntityPointer2>
     bool isCollide(EntityPointer1 a, EntityPointer2 b) {
+        float x = b->getX() - a->getX();
+        float y = b->getY() - a->getY();
+        float r = a->getRadius() + b->getRadius();
 
-        return (b->getX() - a->getX()) * (b->getX() - a->getX()) +
-               (b->getY() - a->getY()) * (b->getY() - a->getY()) <
-               (a->getRadius() + b->getRadius()) * (a->getRadius() + b->getRadius());
+        return x * x + y * y <= r * r;
     }
 
 
